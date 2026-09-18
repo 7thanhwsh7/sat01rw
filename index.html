@@ -141,15 +141,16 @@
   #leftPanel{border-right:1px solid var(--line);background:#fbfcfe;}
   #divider{width:6px;flex-shrink:0;background:var(--line);cursor:col-resize;}
   #divider:hover{background:#b9c2cf;}
-  .passage-text{white-space:pre-wrap;line-height:1.85;font-size:calc(16.5px * var(--zoom));letter-spacing:.2px;word-spacing:1.15px;}
+  .passage-text u{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.6px;}
+  .qDetailLeft u{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.6px;}
+  .passage-text{white-space:pre-wrap;line-height:1.75;font-size:calc(16.5px * var(--zoom));letter-spacing:.08px;word-spacing:.35px;font-family:'Times New Roman',Times,Georgia,serif;}
   #leftPanel img{max-width:100%;height:auto;display:block;margin:12px auto;border:1px solid var(--line);border-radius:6px;}
 
-  .question-text{font-size:calc(17px * var(--zoom));font-weight:600;line-height:1.65;margin-bottom:16px;font-family:Georgia,'Times New Roman',serif;letter-spacing:.2px;word-spacing:1.15px;}
-  .passage-text{font-family:Georgia,'Times New Roman',serif;}
+  .question-text{font-size:calc(17px * var(--zoom));font-weight:500;line-height:1.55;margin-bottom:14px;font-family:'Times New Roman',Times,Georgia,serif;letter-spacing:.05px;word-spacing:.3px;}
   .options{display:flex;flex-direction:column;gap:11px;}
   .optWrap{display:flex;align-items:center;gap:10px;}
   .opt{flex:1;display:flex;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:10px;
-       padding:14px;cursor:pointer;font-size:calc(15.5px * var(--zoom));line-height:1.55;font-family:Georgia,'Times New Roman',serif;letter-spacing:.2px;word-spacing:1.15px;position:relative;transition:background-color .1s,border-color .1s;}
+       padding:14px;cursor:pointer;font-size:calc(15.5px * var(--zoom));line-height:1.5;font-family:'Times New Roman',Times,Georgia,serif;letter-spacing:.04px;word-spacing:.25px;position:relative;transition:background-color .1s,border-color .1s;}
   .opt:hover{border-color:#9fb3cc;}
   .opt.selected{border-color:var(--accent);background:#eaf1fb;}
   .opt.crossed{opacity:.6;background:#f7f7f8;cursor:default;}
@@ -327,23 +328,31 @@
   /* ---------- PRINT / PDF: compact pages, 1.25 cm margins ---------- */
   @page{size:A4;margin:1.25cm;}
   @media print{
-    html,body{height:auto;overflow:visible;background:#fff;}
+    html,body{height:auto!important;overflow:visible!important;background:#fff!important;}
     header,#bottomBar,.hl-toolbar,.lineReaderMask,#moreToolsPopup{display:none!important;}
-    #testUI{display:block!important;}
-    #splitWrap{display:block;min-height:0;overflow:visible;}
-    #leftPanel,#rightPanel{display:block!important;width:auto!important;overflow:visible!important;border:0;padding:0;}
+    #testUI{display:block!important;height:auto!important;min-height:0!important;overflow:visible!important;}
+    #splitWrap{display:block!important;height:auto!important;min-height:0!important;overflow:visible!important;}
+    #leftPanel,#rightPanel{display:block!important;width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important;border:0!important;padding:0!important;}
     #divider,.qcard-head{display:none!important;}
-    .rightPanelBody{padding:0;overflow:visible;}
-    .passage-text{font-size:12.5px;line-height:1.55;letter-spacing:.12px;word-spacing:.7px;margin:0 0 12px;}
-    .question-text{font-size:13.5px;line-height:1.5;margin:10px 0 8px;}
-    .options{gap:6px;}
-    .optWrap{break-inside:avoid;page-break-inside:avoid;}
-    .opt{font-size:12.5px;line-height:1.4;padding:8px 10px;border-radius:5px;}
-    .optletter{width:21px;height:21px;font-size:10px;}
+    .rightPanelBody{display:block!important;padding:0!important;height:auto!important;overflow:visible!important;}
+    /* Browser print engines honor page-break rules only on normal-flow blocks.
+       The entire current question is made a single non-splittable print unit. */
+    #leftPanel{margin:0 0 10px!important;}
+    #rightPanel{break-before:avoid-page!important;page-break-before:avoid!important;break-inside:avoid-page!important;page-break-inside:avoid!important;}
+    .passage-text{font-size:12.5px!important;line-height:1.55!important;letter-spacing:.08px!important;word-spacing:.5px!important;margin:0 0 10px!important;break-inside:avoid-page!important;page-break-inside:avoid!important;}
+    .question-text{font-size:13.5px!important;line-height:1.45!important;margin:0 0 8px!important;break-after:avoid-page!important;page-break-after:avoid!important;}
+    .options{display:block!important;margin:0!important;break-before:avoid-page!important;page-break-before:avoid!important;break-inside:avoid-page!important;page-break-inside:avoid!important;}
+    .optWrap{display:flex!important;margin:0 0 6px!important;break-inside:avoid-page!important;page-break-inside:avoid!important;}
+    /* Same type scale as the question prompt for a uniform printed test. */
+    .opt{font-size:13.5px!important;line-height:1.45!important;padding:8px 10px!important;border-radius:5px!important;}
+    .optletter{width:21px!important;height:21px!important;font-size:10px!important;}
   }
 </style>
 </head>
 <body>
+
+<!-- Nhận phản hồi POST từ Google Apps Script mà không rời khỏi trang làm bài. -->
+<iframe name="sheetSubmissionFrame" title="Sheet submission" style="display:none"></iframe>
 
 <div id="startScreen">
   <div class="card">
@@ -352,9 +361,9 @@
     <h2>SAT Reading &amp; Writing Practice</h2>
     <p style="color:var(--muted);font-size:13.5px;">Enter your name and class to begin.</p>
     <label for="nameInput">Full name</label>
-    <input type="text" id="nameInput" placeholder="Full name">
+    <input type="text" id="nameInput" placeholder="IN HOA, KHONG DAU">
     <label for="clsInput">Class</label>
-    <input type="text" id="clsInput" placeholder="Class">
+    <input type="text" id="clsInput" placeholder="VD: 12A1 (IN HOA, KHONG DAU)">
     <button class="navctl primary" style="width:100%;margin-top:6px;" onclick="startTest()">Start Test</button>
   </div>
 </div>
@@ -495,8 +504,10 @@
         </div>
       </div>
       <div class="rightPanelBody">
-        <div class="question-text" id="questionText"></div>
-        <div class="options" id="optionsList"></div>
+        <div class="printQuestionUnit">
+          <div class="question-text" id="questionText"></div>
+          <div class="options" id="optionsList"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -545,6 +556,11 @@
       </div>
       <button type="button" class="navctl primary" style="margin-top:18px;" onclick="downloadReviewPDF()">&#11015; Tải PDF ôn tập</button>
     </div>
+    <div class="rcard">
+      <h3 style="color:#141414;margin-top:0;">Areas to Practice</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:-6px;">Based on which types of questions you missed.</p>
+      <div id="categoryBreakdown"></div>
+    </div>
     <div class="rcard" id="unlockCard">
       <h3 style="color:#141414;margin-top:0;">Xem đáp án đúng</h3>
       <p style="color:var(--muted);font-size:13px;margin-top:-6px;">Nhập mã do giáo viên cung cấp để xem đáp án đúng cho từng câu trong phần Questions to Review bên dưới.</p>
@@ -568,17 +584,32 @@
         </table>
       </div>
     </div>
-    <div class="rcard">
-      <h3 style="color:#141414;margin-top:0;">Areas to Practice</h3>
-      <p style="color:var(--muted);font-size:13px;margin-top:-6px;">Based on which types of questions you missed.</p>
-      <div id="categoryBreakdown"></div>
-    </div>
+
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
+/* Helpers for student identity: normalize to UPPERCASE without diacritics so
+   progress tracking stays consistent across tests. */
+function normalizeStudentText(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toUpperCase().replace(/\s+/g,' ').trim();
+}
+function bindNameNormalization(){
+  ['nameInput','clsInput'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el||el._boundNorm) return;
+    el._boundNorm=true;
+    el.addEventListener('input', function(){
+      var s=el.selectionStart, e=el.selectionEnd;
+      var nv=normalizeStudentText(el.value);
+      // Keep caret at end for simplicity when auto-uppercasing
+      if(el.value!==nv){ el.value=nv; try{el.setSelectionRange(nv.length,nv.length);}catch(_){} }
+    });
+    el.addEventListener('blur', function(){ el.value=normalizeStudentText(el.value); });
+  });
+}
 /* CONFIG — edit these 5 lines for a new test (comments are for the teacher only) */
 const TEST_NAME = "Test 1 RW";
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyJcjvbCi9xqa0NR-TGyJvpjvqJkcGHKA-x_uw6kazLVng3jKZgsqJg55ae7pPaYmWO_w/exec";
@@ -857,15 +888,19 @@ function submitReport(){
 }
 
 function startTest(){
-  studentName = document.getElementById('nameInput').value.trim();
-  studentClass = document.getElementById('clsInput').value.trim();
-  if(!studentName){ alert("Please enter your name."); return; }
-
+  bindNameNormalization();
+  var rawName=document.getElementById('nameInput').value;
+  var rawCls=document.getElementById('clsInput').value;
+  studentName = normalizeStudentText(rawName);
+  studentClass = normalizeStudentText(rawCls);
+  document.getElementById('nameInput').value=studentName;
+  document.getElementById('clsInput').value=studentClass;
+  if(!studentName){ alert("Vui lòng nhập họ và tên (IN HOA, KHÔNG DẤU)."); return; }
+  if(!studentClass){ alert("Vui lòng nhập lớp (IN HOA, KHÔNG DẤU)."); return; }
+  // Show test UI immediately so there is no perceived freeze
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('testUI').style.display = 'flex';
   document.getElementById('qTotal').textContent = QUESTIONS.length;
-
-  /* Gửi metadata để Apps Script tạo/cập nhật tab phân tích dạng bài theo học sinh. */
   const submissionMeta = QUESTIONS.map((q, i) => ({
     question: i + 1,
     module: q.module || 1,
@@ -879,20 +914,36 @@ function startTest(){
     question_count: String(QUESTIONS.length),
     question_meta: JSON.stringify(submissionMeta)
   });
-  new Image().src = WEBAPP_URL + '?' + registration.toString();
-
-  endTime = Date.now() + TIME_LIMIT_MINUTES * 60000;
+  submitToSheet(registration);
+  if(!endTime) endTime = Date.now() + TIME_LIMIT_MINUTES * 60000;
   tickTimer();
   timerInterval = setInterval(tickTimer, 1000);
-
   buildNavGrid();
   renderQuestion();
   setupDivider();
   setupOptionsDelegation();
   setupHighlighting();
   setupLineReader();
+  // Resume saved progress in background without blocking the UI
+  fetchProgress(studentName, studentClass).then(function(prog){
+    if(!prog || !prog.answers) return;
+    try{
+      var savedAns=JSON.parse(prog.answers);
+      var savedMarked=prog.marked?JSON.parse(prog.marked):{};
+      var savedCurrent=parseInt(prog.current||'0',10);
+      var savedEnd=parseInt(prog.end_time||'0',10);
+      if(savedEnd && savedEnd > Date.now()){
+        Object.keys(savedAns).forEach(function(k){ answers[k]=savedAns[k]; });
+        Object.keys(savedMarked).forEach(function(k){ marked[k]=savedMarked[k]; });
+        if(!isNaN(savedCurrent)) current=Math.min(Math.max(0,savedCurrent), QUESTIONS.length-1);
+        endTime=savedEnd;
+        renderQuestion();
+        refreshNavGrid();
+      }
+    }catch(_){}
+  });
+  return;
 }
-
 function tickTimer(){
   const el = document.getElementById('timer');
   const remaining = endTime - Date.now();
@@ -909,6 +960,7 @@ function tickTimer(){
   el.textContent = m + ":" + s;
   el.classList.toggle('critical', secs < 300);
   el.classList.toggle('warn', secs >= 300 && secs < 600);
+  if(secs % 15 === 0) scheduleSaveProgress();
 }
 
 function toggleTimerVisibility(){
@@ -917,13 +969,33 @@ function toggleTimerVisibility(){
   document.querySelector('.hide-pill').textContent = timerHidden ? 'Show' : 'Hide';
 }
 
+const UNDERLINE_MAP = {
+  2: "Inspired by Barnes's curiosity about the similarities\nbetween the Lindy Hop and these seemingly unrelated dance styles, the show's choreography makes visible how\nintertwined their histories actually are.",
+  22: "But whereas the work by Wilson would have fit the theme for Across\nCounty Lines, works by Clark and Murray would not have.",
+  28: "is highly regarded despite his mediocre writing style"
+};
+function applyUnderline(html, raw, underlineRaw){
+  if(!underlineRaw) return html;
+  var esc = function(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  // Passage is rendered via renderHighlightedHTML then we re-apply underline on the already-escaped HTML.
+  // So we escape the needle the same way and wrap it.
+  var escNeedle = esc(underlineRaw);
+  if(html.indexOf(escNeedle) !== -1){
+    return html.split(escNeedle).join('<u>'+escNeedle+'</u>');
+  }
+  return html;
+}
+
 function renderQuestion(){
   const q = QUESTIONS[current];
   document.getElementById('sectionTitle').textContent = 'Reading and Writing — Module ' + (q.module || 1);
   document.getElementById('qnumBadge').textContent = current+1;
   document.getElementById('qpopupNum').textContent = current+1;
   document.getElementById('mfrCheck').checked = !!marked[q.id];
-  document.getElementById('passageText').innerHTML = renderHighlightedHTML(q.passage, q.id, 'passage');
+  var basePassageHtml = renderHighlightedHTML(q.passage, q.id, 'passage');
+  var ul = UNDERLINE_MAP[q.id] || null;
+  if(ul) basePassageHtml = applyUnderline(basePassageHtml, q.passage, ul);
+  document.getElementById('passageText').innerHTML = basePassageHtml;
   document.getElementById('questionText').innerHTML = renderHighlightedHTML(q.questionText, q.id, 'question');
 
   const imgSlot = document.getElementById('imageSlot');
@@ -996,6 +1068,7 @@ function selectOption(letter){
     el.classList.toggle('selected', el.dataset.letter===letter);
   });
   refreshNavGrid();
+  scheduleSaveProgress();
 }
 
 function toggleCross(qid, letter){
@@ -1012,15 +1085,19 @@ function toggleCross(qid, letter){
     if(btnEl) btnEl.classList.add('crossedIcon');
     if(answers[qid] === letter){ delete answers[qid]; if(optEl) optEl.classList.remove('selected'); }
   }
+  scheduleSaveProgress();
 }
 
 function toggleMark(){
   const q = QUESTIONS[current];
   marked[q.id] = document.getElementById('mfrCheck').checked;
   refreshNavGrid();
+  scheduleSaveProgress();
 }
 
 function goTo(direction){
+  // current will be updated below, save after
+
   if(current === QUESTIONS.length-1 && direction === 1){ showReviewPage(); return; }
   const next = current + direction;
   if(next < 0 || next >= QUESTIONS.length) return;
@@ -1047,6 +1124,7 @@ function refreshNavGrid(){
 }
 function jumpTo(i){
   current = i;
+  scheduleSaveProgress();
   document.getElementById('navPopup').style.display = 'none';
   renderQuestion();
 }
@@ -1226,7 +1304,10 @@ function renderQuestionDetail(){
   pill.textContent = status;
   pill.className = 'statusPill statusPill-' + status.toLowerCase();
 
-  const passageHtml = escHtml(q.passage) + (q.image ? `<img src="${q.image}" alt="Question ${qdIndex+1} figure">` : '');
+  var _ul2 = UNDERLINE_MAP[q.id] || null;
+  var _baseQd = escHtml(q.passage);
+  if(_ul2){ var _escNeedle2 = escHtml(_ul2); if(_baseQd.indexOf(_escNeedle2)!==-1) _baseQd = _baseQd.split(_escNeedle2).join('<u>'+_escNeedle2+'</u>'); }
+  const passageHtml = _baseQd + (q.image ? `<img src="${q.image}" alt="Question ${qdIndex+1} figure">` : '');
   document.getElementById('qdPassage').innerHTML = passageHtml;
   document.getElementById('qdQuestionText').textContent = q.questionText;
 
@@ -1417,6 +1498,71 @@ async function downloadReviewPDF(){
   }
 }
 
+function submitToSheet(params){
+  /* Form POST không bị giới hạn độ dài URL như Image GET, nên giữ nguyên
+     đầy đủ 54 đáp án và metadata kể cả khi đề có nhiều câu. */
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = WEBAPP_URL;
+  form.target = 'sheetSubmissionFrame';
+  form.style.display = 'none';
+  params.forEach((value, key) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(() => form.remove(), 1000);
+}
+
+var progressTimer=null;
+var progressSaving=false;
+function getProgressKey(){
+  return normalizeStudentText(studentName)+'|'+normalizeStudentText(studentClass)+'|'+TEST_NAME;
+}
+function saveProgress(){
+  if(!studentName||!studentClass||!endTime) return;
+  if(progressSaving) return;
+  progressSaving=true;
+  var payload=new URLSearchParams({
+    action:'saveProgress',
+    test_name:TEST_NAME,
+    section:TEST_SECTION,
+    name:normalizeStudentText(studentName),
+    cls:normalizeStudentText(studentClass),
+    answers:JSON.stringify(answers),
+    marked:JSON.stringify(marked),
+    current:String(current),
+    end_time:String(endTime)
+  });
+  submitToSheet(payload);
+  setTimeout(function(){progressSaving=false;}, 1200);
+}
+function scheduleSaveProgress(){
+  clearTimeout(progressTimer);
+  progressTimer=setTimeout(saveProgress, 700);
+}
+function clearProgress(){
+  var payload=new URLSearchParams({action:'clearProgress',test_name:TEST_NAME,name:normalizeStudentText(studentName),cls:normalizeStudentText(studentClass)});
+  submitToSheet(payload);
+}
+function fetchProgress(name, cls){
+  return new Promise(function(resolve){
+    var cb='progCb_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+    var script=document.createElement('script');
+    var done=false;
+    window[cb]=function(data){ if(done) return; done=true; resolve(data||null); try{delete window[cb];}catch(_){} script.remove(); };
+    script.onerror=function(){ if(done) return; done=true; resolve(null); try{delete window[cb];}catch(_){} script.remove(); };
+    var params=new URLSearchParams({action:'getProgress',test_name:TEST_NAME,name:normalizeStudentText(name),cls:normalizeStudentText(cls),callback:cb});
+    script.src=WEBAPP_URL+'?'+params.toString();
+    document.body.appendChild(script);
+    setTimeout(function(){ if(!done){done=true; resolve(null); try{delete window[cb];}catch(_){} script.remove();}}, 7000);
+  });
+}
+
 function submitTest(auto){
   if(!auto){
     const unanswered = QUESTIONS.length - Object.keys(answers).length;
@@ -1448,8 +1594,10 @@ function submitTest(auto){
   QUESTIONS.forEach((q,i)=>{
     params.set('q'+(i+1), answers[q.id] || "");
   });
-  const beacon = new Image();
-  beacon.src = WEBAPP_URL + "?" + params.toString();
+  submitToSheet(params);
+  /* Keep the draft until the server has had time to finish writing the
+     submission. This protects answers if the request is delayed or fails. */
+  setTimeout(function(){ try{ clearProgress(); }catch(_){} }, 2500);
 
   let correctCount = 0;
   const wrongQuestionNumbers = [];
