@@ -662,6 +662,7 @@ const ANSWER_KEY_CODE_SOURCE = "sheet"; // mã mở khoá đáp án giờ quản
                                           // "AnswerCodes" trên Google Sheet — không sửa ở đây nữa
 const TEST_SECTION = "RW"; // "RW" (Reading & Writing) hoặc "M" (Math) — quyết định hậu tố tên tab trên Sheet
 const MODULE_SIZES = [27, 27]; // số câu mỗi module, theo tab QUESTION_INFO (Module 1: Q1–27, Module 2: Q28–54). Chỉ dùng để chia phần thống kê thời gian ở trang kết quả; để [] nếu không chia.
+const ALLOW_EARLY_FINISH = true; // true = CHẾ ĐỘ LUYỆN TẬP: cho kết thúc module sớm (có thông báo quy chế). false = CHẾ ĐỘ THI THẬT: phải chờ hết giờ mới sang module sau / nộp bài (đúng quy chế Bluebook).
 
 /* Sample question data.
    id, domain (internal note only, never shown to students), passage,
@@ -1935,6 +1936,7 @@ function startModule(k){
   const m = qtModules()[k];
   current = m.from;
   endTime = Date.now() + TIME_LIMIT_MINUTES * 60000;
+  closeModal('studentModal');
   document.getElementById('navPopup').style.display = 'none';
   document.getElementById('reviewPage').style.display = 'none';
   document.getElementById('testUI').style.display = 'flex';
@@ -1943,14 +1945,46 @@ function startModule(k){
   tickTimer();
   flushSave(false);
 }
-function finishModule(auto){
+/* Hộp thông báo quy chế khi học sinh chủ động kết thúc module sớm (dùng lại khung studentModal). Trả về true = tiếp tục. */
+function askFinishModule(m, next, unanswered, remainingMs){
+  return new Promise(resolve => {
+    const $ = (id) => document.getElementById(id);
+    $('smHead').textContent = 'Finish ' + m.name + '?';
+    $('smTitle').textContent = 'Before you continue to ' + next.name;
+    $('smEn').textContent = 'Practice mode only: in the official Digital SAT you cannot move on early — you must wait until the timer ends.';
+    $('smVi').textContent = 'Chỉ áp dụng khi luyện tập: trong kỳ thi SAT chính thức, bạn KHÔNG được sang module sau khi chưa hết giờ, phải chờ hết giờ.';
+    const li = (en, vi) => '<li style="margin:0 0 9px;"><b>' + en + '</b><br><span style="color:#5b6472;">' + vi + '</span></li>';
+    const left = remainingMs > 0 ? qtFmt(remainingMs / 1000) : '0:00';
+    $('smList').innerHTML = '<ul style="margin:6px 0 10px 18px;padding:0;font-size:13.5px;line-height:1.45;text-align:left;">' +
+      li('You cannot go back to ' + m.name + ' once you continue.', 'Sau khi chuyển, bạn KHÔNG thể quay lại ' + m.name + ' để xem hay sửa bài.') +
+      li('Your answers in ' + m.name + ' are final.', 'Đáp án của ' + m.name + ' được chốt, không thể thay đổi.') +
+      li('Unused time is lost — you have ' + left + ' left. ' + next.name + ' has its own separate timer (' + TIME_LIMIT_MINUTES + ' min).', 'Thời gian còn lại (' + left + ') sẽ bị bỏ, không cộng sang module sau. ' + next.name + ' có đồng hồ riêng (' + TIME_LIMIT_MINUTES + ' phút).') +
+      (unanswered ? li('You have ' + unanswered + ' unanswered question(s) in ' + m.name + '.', 'Bạn còn ' + unanswered + ' câu chưa trả lời trong ' + m.name + '.') : '') +
+      '</ul>';
+    $('smMsg').style.display = 'none';
+    const actions = $('smActions'); actions.innerHTML = '';
+    const row = document.createElement('div'); row.className = 'smRow';
+    const mk = (text, cls, val) => {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'smBtn' + (cls ? ' ' + cls : ''); btn.textContent = text;
+      btn.onclick = () => { closeModal('studentModal'); resolve(val); };
+      return btn;
+    };
+    row.appendChild(mk('Stay in ' + m.name, '', false));
+    row.appendChild(mk('Continue to ' + next.name, 'primary', true));
+    actions.appendChild(row);
+    openModal('studentModal');
+  });
+}
+async function finishModule(auto){
+  if(!auto && !ALLOW_EARLY_FINISH) return;        // chế độ thi thật: chỉ hết giờ mới kết thúc module
   const mods = qtModules(), k = modPos(), m = mods[k];
   if(k >= mods.length - 1){ submitTest(auto); return; }
   if(!auto){
     let un = 0; for(let i = m.from; i <= m.to; i++) if(answers[QUESTIONS[i].id] === undefined) un++;
-    const msg = (un ? un + ' question(s) unanswered in ' + m.name + '.\n' : '') +
-      'Once you continue to ' + mods[k+1].name + ', you cannot return to ' + m.name + '.\nContinue?';
-    if(!confirm(msg)) return;
+    const ok = await askFinishModule(m, mods[k+1], un, endTime - Date.now());
+    if(!ok) return;
+    if(modPos() !== k) return;      // trong lúc đọc quy chế đã hết giờ và tự sang module sau
   }
   qtPause();
   startModule(k + 1);
@@ -2349,6 +2383,8 @@ function showReviewPage(){
   document.getElementById('rvTitle').textContent = 'Check Your Work' + (_m.name ? ' — ' + _m.name : '');
   const _btn = document.getElementById('rvSubmitBtn');
   _btn.textContent = _last ? 'Submit Test' : 'Finish ' + _m.name;
+  _btn.disabled = !ALLOW_EARLY_FINISH;
+  if(!ALLOW_EARLY_FINISH) _btn.textContent = 'Available when time is up';
   grid.innerHTML = QUESTIONS.map((q,i)=>{
     if(i < _m.from || i > _m.to) return '';
     const isAns = answers[q.id] !== undefined;
