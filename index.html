@@ -339,6 +339,23 @@
     color:var(--muted);padding:9px 7px;border-bottom:1.5px solid var(--line);white-space:nowrap;}
   .reviewTable td{padding:12px 7px;border-bottom:1px solid var(--line);white-space:nowrap;}
   .reviewTable tbody tr:hover{background:#f7f9fc;}
+  /* ---- Thời gian làm từng câu ---- */
+  .qtChip{font-size:12px;font-weight:600;color:#3a4453;background:#fff;border:1px solid #c9ced6;border-radius:12px;padding:3px 10px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .qtChip b{font-weight:700;}
+  body.theme-dark .qtChip{background:#1c1c1c;border-color:#555;color:#ddd;}
+  body.theme-cream .qtChip{background:#f7efd4;border-color:#d9cc9c;}
+  .qtSumRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .qtSumBox{flex:1;min-width:120px;background:#f4f6f9;border:1px solid var(--line);border-radius:10px;padding:14px 10px;text-align:center;}
+  .qtSumNum{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:#141414;}
+  .qtSumLbl{font-size:11.5px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;}
+  .qtSumSub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .modRow td{background:#eef1f5;font-weight:800;font-size:12.5px;color:#141414;padding:9px 7px;border-bottom:1.5px solid var(--line);}
+  .modRow td span{font-weight:600;color:var(--muted);margin-left:10px;}
+  .qtModTitle{font-weight:800;font-size:14px;margin:14px 0 2px;color:#141414;}
+  .qtModTitle span{font-weight:600;color:var(--muted);font-size:12.5px;margin-left:8px;}
+  .qtModTitle:first-child{margin-top:2px;}
+  .qtCell{font-variant-numeric:tabular-nums;font-weight:600;}
+  .qtCell.slow{color:var(--bad);} .qtCell.fast{color:var(--good);}
   .statusPill{display:inline-block;border:1.5px solid #999;border-radius:12px;padding:3px 12px;font-size:12px;font-weight:700;}
   .statusPill-correct{border-color:#2e7d32;color:#2e7d32;}
   .statusPill-incorrect{border-color:var(--bad);color:var(--bad);}
@@ -543,6 +560,7 @@
         <div class="qnum-badge" id="qnumBadge">1</div>
         <label class="mfr2"><input type="checkbox" id="mfrCheck" onchange="toggleMark()">Mark for Review &#128278;</label>
         <div class="qcard-right">
+          <span class="qtChip" title="Time spent on this question">&#9201; <b id="qtLive">0:00</b></span>
           <button class="abcToggle" id="abcToggleBtn" onclick="toggleCrossMode()">ABC</button>
         </div>
       </div>
@@ -575,10 +593,10 @@
 
 <div id="reviewPage">
   <div id="reviewPageHead">
-    <h3>Check Your Work</h3>
+    <h3 id="rvTitle">Check Your Work</h3>
     <div>
       <button class="navctl secondary" onclick="backToTestFromReviewPage()">Back to Test</button>
-      <button class="navctl primary" onclick="submitTest()">Submit Test</button>
+      <button class="navctl primary" id="rvSubmitBtn" onclick="finishModule()">Submit Test</button>
     </div>
   </div>
   <div id="reviewGridWrap"><div class="rvGrid" id="rvGrid"></div></div>
@@ -596,6 +614,11 @@
         <div class="scoreStatBox isOmitted"><div class="scoreStatNum" id="statOmitted">0</div><div class="scoreStatLabel">Omitted</div></div>
       </div>
       <button type="button" class="navctl primary" style="margin-top:18px;" onclick="downloadReviewPDF()">&#11015; Download Review PDF</button>
+    </div>
+    <div class="rcard" id="qtSummaryCard" style="display:none;">
+      <h3 style="color:#141414;margin-top:0;">Time per Question</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:-6px;margin-bottom:0;">Based on the questions you answered, split by module.</p>
+      <div id="qtSummaryRow"></div>
     </div>
     <div class="rcard">
       <h3 style="color:#141414;margin-top:0;">Areas to Practice</h3>
@@ -619,7 +642,7 @@
         <table class="reviewTable">
           <thead><tr>
             <th>Question</th><th>Status</th><th>Type</th><th>Your Answer</th>
-            <th>Correct Answer</th><th>Flagged</th><th>Action</th>
+            <th>Correct Answer</th><th>Flagged</th><th>Time</th><th>Action</th>
           </tr></thead>
           <tbody id="reviewTableBody"></tbody>
         </table>
@@ -634,10 +657,11 @@
 /* CONFIG — edit these 5 lines for a new test (comments are for the teacher only) */
 const TEST_NAME = "Test 1 RW";
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyJcjvbCi9xqa0NR-TGyJvpjvqJkcGHKA-x_uw6kazLVng3jKZgsqJg55ae7pPaYmWO_w/exec";
-const TIME_LIMIT_MINUTES = 32;
+const TIME_LIMIT_MINUTES = 32;   // PHÚT CHO MỖI MODULE (SAT thật: Reading & Writing = 32 phút / module, 27 câu)
 const ANSWER_KEY_CODE_SOURCE = "sheet"; // mã mở khoá đáp án giờ quản lý trực tiếp trong tab
                                           // "AnswerCodes" trên Google Sheet — không sửa ở đây nữa
 const TEST_SECTION = "RW"; // "RW" (Reading & Writing) hoặc "M" (Math) — quyết định hậu tố tên tab trên Sheet
+const MODULE_SIZES = [27, 27]; // số câu mỗi module, theo tab QUESTION_INFO (Module 1: Q1–27, Module 2: Q28–54). Chỉ dùng để chia phần thống kê thời gian ở trang kết quả; để [] nếu không chia.
 
 /* Sample question data.
    id, domain (internal note only, never shown to students), passage,
@@ -1674,6 +1698,8 @@ function openNotesPanel(){
 
 function jumpToFromNotes(qi){
   closeModal('notesModal');
+  const m = curMod();
+  if(qi < m.from || qi > m.to){ alert('That question is in a module you can no longer access.'); return; }
   jumpTo(qi);
 }
 
@@ -1785,29 +1811,18 @@ function normalizeStudentInput(str){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup); else setup();
 })();
 
+/* Không còn đăng ký / kiểm tra tên: học sinh nhập tên (tự chuyển IN HOA không dấu) + lớp là vào làm luôn.
+   Sheet tự gộp kết quả theo TÊN (+ LỚP) đã chuẩn hoá -> GV chỉ cần dặn học sinh ghi đúng tên. */
+function normalizeClassInput(str){ return String(str || '').toUpperCase().replace(/\s+/g, ''); }
 let startInProgress = false;
 async function startTest(){
   if(startInProgress) return;
   const typedName = normalizeStudentInput(document.getElementById('nameInput').value).trim();
-  const typedClass = document.getElementById('clsInput').value.trim();
+  const typedClass = normalizeClassInput(document.getElementById('clsInput').value);
   if(!typedName){ alert("Please enter your name in CAPITAL LETTERS, no accents.\nVui lòng nhập tên IN HOA, không dấu."); return; }
-
-  startInProgress = true; setStartBusy(true);
-  const slowTimer = setTimeout(() => setStartBusy(true, 'Still checking, please wait...'), 6000);
-  const res = await callSheetRetry({ action: 'checkStudent', name: typedName, cls: typedClass });
-  clearTimeout(slowTimer);
-  startInProgress = false; setStartBusy(false);
-
-  if(res && res.ok === true && res.status === 'found' && res.name){
-    beginTest(res.name, typedClass);                       // đã đăng ký -> dùng tên chuẩn
-  } else if(res && res.ok === true && res.status === 'new'){
-    showStudentModal(res, typedName, typedClass);          // chưa có -> hỏi xác nhận / gợi ý
-  } else {
-    // Không kiểm tra được (mất mạng, hoặc Apps Script chưa cập nhật)
-    if(confirm("Could not verify your name (connection problem).\nKhông kiểm tra được tên (lỗi kết nối).\n\nStart anyway with the name as typed?\nVẫn bắt đầu với tên bạn đã nhập?")){
-      beginTest(typedName, typedClass);
-    }
-  }
+  startInProgress = true;
+  try{ await beginTest(typedName, typedClass); }
+  finally{ startInProgress = false; }
 }
 
 function showStudentModal(res, typedName, typedClass){
@@ -1868,6 +1883,113 @@ function showStudentModal(res, typedName, typedClass){
   openModal('studentModal');
 }
 
+/* ================= THỜI GIAN LÀM TỪNG CÂU =================
+   Cộng dồn số mili-giây học sinh dừng ở mỗi câu (quay lại câu cũ thì cộng tiếp). Tạm dừng khi:
+   ẩn tab / vào trang Review / đã nộp. Hiện trực tiếp ở đầu mỗi câu + cột Time và thẻ tổng kết ở trang kết quả.
+   Gửi lên Sheet (qtimes) khi nộp; lưu kèm bản nháp (marked.t) để thoát ra vào lại không mất. */
+const qTime = {};                    // qid -> ms cộng dồn
+let qtId = null, qtStart = 0, qtLiveTimer = null;
+function qtCommit(){ if(qtId !== null && qtStart) qTime[qtId] = (qTime[qtId] || 0) + (Date.now() - qtStart); }
+function qtSwitch(id){
+  qtCommit(); qtId = id; qtStart = Date.now();
+  if(!qtLiveTimer) qtLiveTimer = setInterval(qtRefreshLive, 1000);
+  qtRefreshLive();
+}
+function qtPause(){ qtCommit(); qtStart = 0; }
+function qtResume(){
+  const ui = document.getElementById('testUI');
+  if(qtId !== null && !qtStart && !progressLocked && ui && ui.style.display !== 'none') qtStart = Date.now();
+}
+function qtMs(id){ return (qTime[id] || 0) + (id === qtId && qtStart ? Date.now() - qtStart : 0); }
+function qtFmt(sec){
+  sec = Math.max(0, Math.round(sec));
+  return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+}
+function qtRefreshLive(){
+  const el = document.getElementById('qtLive');
+  if(el && qtId !== null) el.textContent = qtFmt(qtMs(qtId) / 1000);
+}
+/* Chia module: MODULE_SIZES = [27, 27] -> Module 1 = câu 1–27, Module 2 = câu 28–54 (câu dư, nếu có, gộp vào module cuối) */
+let qtModsCache = null;
+function qtModules(){
+  if(qtModsCache) return qtModsCache;
+  const n = QUESTIONS.length, out = [];
+  let start = 0;
+  (MODULE_SIZES || []).forEach((sz, k) => {
+    const end = k === MODULE_SIZES.length - 1 ? n : Math.min(n, start + sz);
+    if(end > start) out.push({ name: 'Module ' + (k + 1), from: start, to: end - 1 });
+    start = end;
+  });
+  if(!out.length) out.push({ name: '', from: 0, to: n - 1 });
+  qtModsCache = out;
+  return out;
+}
+function qtModOf(i){ return qtModules().filter(m => i >= m.from && i <= m.to)[0]; }
+
+/* ===== KHOÁ THEO MODULE (chuẩn Digital SAT) =====
+   Mỗi module có đồng hồ riêng (TIME_LIMIT_MINUTES). Trong module: tự do đi lại các câu, đánh dấu, Review.
+   Bấm "Finish Module" hoặc hết giờ -> sang module sau, KHÔNG quay lại module trước được. Module cuối -> nộp bài. */
+function curMod(){ return qtModOf(current); }
+function modPos(){ return qtModules().indexOf(curMod()); }
+function startModule(k){
+  const m = qtModules()[k];
+  current = m.from;
+  endTime = Date.now() + TIME_LIMIT_MINUTES * 60000;
+  document.getElementById('navPopup').style.display = 'none';
+  document.getElementById('reviewPage').style.display = 'none';
+  document.getElementById('testUI').style.display = 'flex';
+  buildNavGrid();
+  renderQuestion();
+  tickTimer();
+  flushSave(false);
+}
+function finishModule(auto){
+  const mods = qtModules(), k = modPos(), m = mods[k];
+  if(k >= mods.length - 1){ submitTest(auto); return; }
+  if(!auto){
+    let un = 0; for(let i = m.from; i <= m.to; i++) if(answers[QUESTIONS[i].id] === undefined) un++;
+    const msg = (un ? un + ' question(s) unanswered in ' + m.name + '.\n' : '') +
+      'Once you continue to ' + mods[k+1].name + ', you cannot return to ' + m.name + '.\nContinue?';
+    if(!confirm(msg)) return;
+  }
+  qtPause();
+  startModule(k + 1);
+}
+function qtAnsweredIn(m){
+  const list = [];
+  for(let i = m.from; i <= m.to; i++){ const q = QUESTIONS[i]; if(answers[q.id] !== undefined && qtMs(q.id) >= 500) list.push(q); }
+  return list;
+}
+function qtModTotal(m){ let s = 0; for(let i = m.from; i <= m.to; i++) s += qtMs(QUESTIONS[i].id); return s; }
+function qtCls(i){                  // tô đỏ câu lâu nhất / xanh câu nhanh nhất TRONG module của nó
+  const q = QUESTIONS[i], list = qtAnsweredIn(qtModOf(i));
+  if(list.length < 2 || answers[q.id] === undefined) return '';
+  const t = qtMs(q.id), ts = list.map(x => qtMs(x.id));
+  if(t === Math.max.apply(null, ts)) return 'slow';
+  if(t === Math.min.apply(null, ts)) return 'fast';
+  return '';
+}
+function qtCompact(){ const o = {}; QUESTIONS.forEach(q => { const s = Math.round(qtMs(q.id) / 1000); if(s > 0) o[q.id] = s; }); return o; }
+function renderTimeSummary(){
+  const mods = qtModules(), card = document.getElementById('qtSummaryCard');
+  if(!mods.some(m => qtAnsweredIn(m).length)){ card.style.display = 'none'; return; }
+  const box = (num, lbl, sub) => '<div class="qtSumBox"><div class="qtSumNum">' + num + '</div><div class="qtSumLbl">' + lbl + '</div>' + (sub ? '<div class="qtSumSub">' + sub + '</div>' : '') + '</div>';
+  document.getElementById('qtSummaryRow').innerHTML = mods.map(m => {
+    const list = qtAnsweredIn(m);
+    const title = m.name ? '<div class="qtModTitle">' + m.name + '<span>Questions ' + (m.from + 1) + '–' + (m.to + 1) + ' · Total ' + qtFmt(qtModTotal(m) / 1000) + '</span></div>' : '';
+    if(!list.length) return title + '<div class="qtSumSub" style="margin:4px 0 8px;">No answered questions in this module.</div>';
+    let fast = list[0], slow = list[0], sum = 0;
+    list.forEach(q => { const t = qtMs(q.id); sum += t; if(t < qtMs(fast.id)) fast = q; if(t > qtMs(slow.id)) slow = q; });
+    const idx = q => QUESTIONS.indexOf(q) + 1;
+    return title + '<div class="qtSumRow" style="width:100%;">' +
+      box(qtFmt(sum / list.length / 1000), 'Average', 'per question') +
+      box(qtFmt(qtMs(fast.id) / 1000), 'Fastest', 'Question ' + idx(fast)) +
+      box(qtFmt(qtMs(slow.id) / 1000), 'Slowest', 'Question ' + idx(slow)) + '</div>';
+  }).join('');
+  card.style.display = 'block';
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') qtPause(); else qtResume(); });
+
 /* ================= LƯU / KHÔI PHỤC TIẾN ĐỘ (tab SAT_Progress trên Sheet) =================
    Tự lưu đáp án, câu đánh dấu, gạch chọn, câu đang làm và GIỜ KẾT THÚC lên Sheet mỗi khi học
    sinh thao tác. Nếu lỡ thoát trang, đăng nhập lại đúng tên + lớp sẽ được hỏi tiếp tục.
@@ -1886,7 +2008,7 @@ function buildProgressParams(){
   return {
     action: 'saveProgress', test_name: TEST_NAME, name: studentName, cls: studentClass,
     answers: JSON.stringify(answers),
-    marked: JSON.stringify({ m: markedIds, x: crossedCompact }),
+    marked: JSON.stringify({ m: markedIds, x: crossedCompact, t: qtCompact() }),
     current: String(current), end_time: String(endTime)
   };
 }
@@ -1920,9 +2042,10 @@ function parseSavedProgress(saved){
   const ids = {}; QUESTIONS.forEach(q => { ids[String(q.id)] = true; });
   const ans = {};
   Object.keys(rawAns).forEach(k => { if(ids[k] && ['A','B','C','D'].indexOf(rawAns[k]) !== -1) ans[k] = rawAns[k]; });
-  const mk = {}, cr = {};
+  const mk = {}, cr = {}, qt = {};
   try{
     const raw = JSON.parse(saved.marked || '{}') || {};
+    Object.keys(raw.t || {}).forEach(k => { if(ids[k]) qt[k] = Math.max(0, Number(raw.t[k]) || 0) * 1000; });
     Object.keys(raw.m || {}).forEach(k => { if(ids[k]) mk[k] = true; });
     Object.keys(raw.x || {}).forEach(k => {
       if(!ids[k]) return;
@@ -1930,16 +2053,17 @@ function parseSavedProgress(saved){
     });
   }catch(err){}
   const cur = Math.max(0, Math.min(QUESTIONS.length - 1, parseInt(saved.current, 10) || 0));
-  return { endTime: end, answers: ans, marked: mk, crossed: cr, current: cur };
+  return { endTime: end, answers: ans, marked: mk, crossed: cr, current: cur, qt: qt };
 }
 function applySavedProgress(p){
   [answers, marked, crossed].forEach(o => Object.keys(o).forEach(k => delete o[k]));
   Object.assign(answers, p.answers); Object.assign(marked, p.marked); Object.assign(crossed, p.crossed);
+  Object.keys(qTime).forEach(k => delete qTime[k]); Object.assign(qTime, p.qt || {});
   current = p.current; endTime = p.endTime;
 }
 
 /* Hỏi học sinh: tiếp tục / làm lại / nộp bài đã lưu (dùng lại khung studentModal) */
-function askSavedProgress(remainingMs){
+function askSavedProgress(remainingMs, moreModules){
   return new Promise(resolve => {
     const $ = (id) => document.getElementById(id);
     const expired = remainingMs <= 0;
@@ -1947,10 +2071,10 @@ function askSavedProgress(remainingMs){
     $('smHead').textContent = 'Saved progress';
     $('smTitle').textContent = expired ? 'Time ran out' : 'Continue your test?';
     $('smEn').textContent = expired
-      ? 'Your previous attempt ran out of time before it was submitted. Submit your saved answers now?'
+      ? (moreModules ? 'Time for that module ran out while you were away. Continue to the next module?' : 'Your previous attempt ran out of time before it was submitted. Submit your saved answers now?')
       : 'You have an unfinished attempt with about ' + mins + ' minute' + (mins === 1 ? '' : 's') + ' left. Continue where you left off?';
     $('smVi').textContent = expired
-      ? 'Bài làm lần trước đã hết giờ nhưng chưa được nộp. Nộp các đáp án đã lưu ngay bây giờ?'
+      ? (moreModules ? 'Module trước đã hết giờ khi bạn thoát ra. Chuyển sang module tiếp theo?' : 'Bài làm lần trước đã hết giờ nhưng chưa được nộp. Nộp các đáp án đã lưu ngay bây giờ?')
       : 'Bạn có bài làm dở, còn khoảng ' + mins + ' phút. Tiếp tục từ chỗ đã dừng?';
     $('smList').innerHTML = ''; $('smMsg').style.display = 'none';
     const actions = $('smActions'); actions.innerHTML = '';
@@ -1962,7 +2086,7 @@ function askSavedProgress(remainingMs){
       return b;
     };
     row.appendChild(mk('Start over', '', 'restart'));
-    row.appendChild(mk(expired ? 'Submit saved answers' : 'Continue', 'primary', expired ? 'submit' : 'resume'));
+    row.appendChild(mk(expired ? (moreModules ? 'Next module' : 'Submit saved answers') : 'Continue', 'primary', expired ? 'submit' : 'resume'));
     actions.appendChild(row);
     openModal('studentModal');
   });
@@ -1976,20 +2100,16 @@ async function beginTest(name, cls){
     studentName = name;
     studentClass = cls;
 
-    setStartBusy(true);
-    const saved = await callSheetRetry({ action: 'getProgress', test_name: TEST_NAME, name: studentName, cls: studentClass });
+    setStartBusy(true, 'Starting...');
+    const saved = await callSheet({ action: 'getProgress', test_name: TEST_NAME, name: studentName, cls: studentClass }, 12000);
     setStartBusy(false);
 
-    let resume = null;
-    if(saved === null){
-      if(!confirm("Could not check for saved progress (connection problem).\nKhông kiểm tra được bài làm dở (lỗi kết nối).\n\nContinue anyway? Earlier saved progress may be overwritten.\nVẫn tiếp tục? Bài làm dở trước đó có thể bị ghi đè.")) return;
-    } else {
-      resume = parseSavedProgress(saved);
-    }
+    // Có bản nháp cùng tên + lớp -> hỏi làm tiếp. Không có / không kết nối được -> làm mới (không chặn học sinh).
+    const resume = saved === null ? null : parseSavedProgress(saved);
 
     let choice = 'fresh';
     if(resume){
-      choice = await askSavedProgress(resume.endTime - Date.now());
+      choice = await askSavedProgress(resume.endTime - Date.now(), qtModules().indexOf(qtModOf(resume.current)) < qtModules().length - 1);
       if(choice === 'restart'){
         const img = new Image();
         img.src = WEBAPP_URL + '?' + new URLSearchParams({ action: 'clearProgress', test_name: TEST_NAME, name: studentName, cls: studentClass }).toString();
@@ -1998,15 +2118,16 @@ async function beginTest(name, cls){
     }
 
     document.getElementById('startScreen').style.display = 'none';
-    if(choice === 'submit'){                       // hết giờ lúc đã thoát -> nộp đáp án đã lưu
+    if(choice === 'submit'){                       // hết giờ lúc đã thoát
       applySavedProgress(resume);
-      submitTest(true);
-      return;
+      if(modPos() >= qtModules().length - 1){ submitTest(true); return; }   // module cuối -> nộp đáp án đã lưu
+      choice = 'nextmod';                           // module giữa -> sang module kế tiếp (bên dưới)
     }
     document.getElementById('testUI').style.display = 'flex';
     document.getElementById('qTotal').textContent = QUESTIONS.length;
 
     if(choice === 'resume'){ applySavedProgress(resume); }
+    else if(choice === 'nextmod'){ current = qtModules()[modPos() + 1].from; endTime = Date.now() + TIME_LIMIT_MINUTES * 60000; }
     else { endTime = Date.now() + TIME_LIMIT_MINUTES * 60000; }
     tickTimer();
     timerInterval = setInterval(tickTimer, 1000);
@@ -2031,6 +2152,12 @@ function tickTimer(){
   const remaining = endTime - Date.now();
   if(remaining <= 0){
     el.textContent = "00:00";
+    const _mods = qtModules(), _k = modPos();
+    if(_k < _mods.length - 1){                     // hết giờ module -> tự sang module sau
+      alert("Time's up for " + _mods[_k].name + "! " + _mods[_k + 1].name + " will begin now.");
+      finishModule(true);
+      return;
+    }
     clearInterval(timerInterval);
     alert("Time's up! Your test will be submitted automatically.");
     submitTest(true);
@@ -2052,8 +2179,17 @@ function toggleTimerVisibility(){
 
 function renderQuestion(){
   const q = QUESTIONS[current];
-  document.getElementById('qnumBadge').textContent = current+1;
-  document.getElementById('qpopupNum').textContent = current+1;
+  qtSwitch(q.id);
+  const stEl = document.getElementById('sectionTitle');           // "Section 1: Reading and Writing" -> "Section 1, Module 2: Reading and Writing"
+  if(stEl){
+    if(!stEl.dataset.base) stEl.dataset.base = stEl.textContent;
+    const md = qtModOf(current), base = stEl.dataset.base;
+    stEl.textContent = md && md.name ? (base.indexOf(':') > -1 ? base.replace(':', ', ' + md.name + ':') : base + ', ' + md.name) : base;
+  }
+  const _mm = curMod();
+  document.getElementById('qnumBadge').textContent = current - _mm.from + 1;
+  document.getElementById('qpopupNum').textContent = current - _mm.from + 1;
+  document.getElementById('qTotal').textContent = _mm.to - _mm.from + 1;
   document.getElementById('mfrCheck').checked = !!marked[q.id];
   document.getElementById('passageText').innerHTML = renderHighlightedHTML(q.passage, q.id, 'passage');
   document.getElementById('questionText').innerHTML = renderHighlightedHTML(q.questionText, q.id, 'question');
@@ -2063,8 +2199,8 @@ function renderQuestion(){
 
   renderOptions();
 
-  document.getElementById('backBtn').disabled = current === 0;
-  document.getElementById('nextBtn').textContent = current === QUESTIONS.length-1 ? 'Review' : 'Next';
+  document.getElementById('backBtn').disabled = current === _mm.from;
+  document.getElementById('nextBtn').textContent = current === _mm.to ? 'Review' : 'Next';
 
   refreshNavGrid();
 }
@@ -2156,9 +2292,10 @@ function toggleMark(){
 }
 
 function goTo(direction){
-  if(current === QUESTIONS.length-1 && direction === 1){ showReviewPage(); return; }
+  const m = curMod();
+  if(current === m.to && direction === 1){ showReviewPage(); return; }
   const next = current + direction;
-  if(next < 0 || next >= QUESTIONS.length) return;
+  if(next < m.from || next > m.to) return;
   current = next;
   renderQuestion();
   scheduleSave();
@@ -2166,7 +2303,8 @@ function goTo(direction){
 
 function buildNavGrid(){
   const grid = document.getElementById('navgrid');
-  grid.innerHTML = QUESTIONS.map((q,i)=>`<button class="navbtn" id="navbtn-${i}" onclick="jumpTo(${i})">${i+1}</button>`).join('');
+  const m = curMod();
+  grid.innerHTML = QUESTIONS.map((q,i)=> (i < m.from || i > m.to) ? '' : `<button class="navbtn" id="navbtn-${i}" onclick="jumpTo(${i})">${i - m.from + 1}</button>`).join('');
   refreshNavGrid();
 }
 function refreshNavGrid(){
@@ -2182,6 +2320,8 @@ function refreshNavGrid(){
   });
 }
 function jumpTo(i){
+  const m = curMod();
+  if(i < m.from || i > m.to) return;   // khác module -> không cho nhảy
   current = i;
   document.getElementById('navPopup').style.display = 'none';
   renderQuestion();
@@ -2200,19 +2340,27 @@ document.addEventListener('click', (e)=>{
 });
 
 function showReviewPage(){
+  qtPause();
   document.getElementById('navPopup').style.display = 'none';
   document.getElementById('testUI').style.display = 'none';
   document.getElementById('reviewPage').style.display = 'flex';
   const grid = document.getElementById('rvGrid');
+  const _m = curMod(), _last = modPos() >= qtModules().length - 1;
+  document.getElementById('rvTitle').textContent = 'Check Your Work' + (_m.name ? ' — ' + _m.name : '');
+  const _btn = document.getElementById('rvSubmitBtn');
+  _btn.textContent = _last ? 'Submit Test' : 'Finish ' + _m.name;
   grid.innerHTML = QUESTIONS.map((q,i)=>{
+    if(i < _m.from || i > _m.to) return '';
     const isAns = answers[q.id] !== undefined;
     return `<div class="rvItem ${isAns?'answered':'unanswered'}" onclick="jumpFromReview(${i})">
-      <div class="qn">${i+1}</div><div class="st">${isAns?'Answered':'Unanswered'}</div>
+      <div class="qn">${i - _m.from + 1}</div><div class="st">${isAns?'Answered':'Unanswered'}</div>
       ${marked[q.id]?'<span class="flagdot"></span>':''}
     </div>`;
   }).join('');
 }
 function jumpFromReview(i){
+  const m = curMod();
+  if(i < m.from || i > m.to) return;
   current = i;
   document.getElementById('reviewPage').style.display = 'none';
   document.getElementById('testUI').style.display = 'flex';
@@ -2317,7 +2465,10 @@ async function unlockAnswers(){
 
 function buildReviewTable(){
   const tbody = document.getElementById('reviewTableBody');
+  const _mods = qtModules();
   tbody.innerHTML = QUESTIONS.map((q,i)=>{
+    const _m = _mods.filter(m => m.from === i && m.name)[0];
+    const modRow = _m ? `<tr class="modRow"><td colspan="8">${_m.name}<span>Questions ${_m.from+1}–${_m.to+1} · Total time ${qtFmt(qtModTotal(_m)/1000)}</span></td></tr>` : '';
     const ans = answers[q.id];
     const isOmitted = ans === undefined;
     const isCorrect = ans === q.correctKey;
@@ -2329,13 +2480,14 @@ function buildReviewTable(){
     const correctAnsCell = answersUnlocked
       ? `<span class="correctAnsCell">${q.correctKey}</span>`
       : `<span style="color:var(--muted);" title="Enter the teacher code to view">&#128274;</span>`;
-    return `<tr>
+    return modRow + `<tr>
       <td>Question ${i+1}</td>
       <td><span class="statusPill statusPill-${statusCls}">${status}</span></td>
       <td>Multiple Choice</td>
       <td>${yourAnsCell}</td>
       <td>${correctAnsCell}</td>
       <td>${flagged}</td>
+      <td class="qtCell ${qtCls(i)}">${qtFmt(qtMs(q.id)/1000)}</td>
       <td><button type="button" class="viewDetailsBtn" onclick="openQuestionDetail(${i})">View Detail</button></td>
     </tr>`;
   }).join('');
@@ -2463,10 +2615,16 @@ function setTheme(theme){
 }
 
 /* ---- Xuất PDF ôn tập (Areas to Practice + đề để làm lại, KHÔNG hiện đáp án) ----
-   Dựng 1 khối HTML dùng lại đúng CSS/font của trang (Georgia cho đoạn văn/câu hỏi,
-   giống hệt lúc làm bài), "chụp" bằng html2canvas rồi đưa vào PDF bằng jsPDF —
-   cách này tránh hẳn lỗi vỡ dấu tiếng Việt khi jsPDF tự vẽ chữ bằng font Helvetica. */
+   Dựng 1 khối HTML (toàn bộ tiếng Anh, font serif Georgia/Minion giống lúc làm bài),
+   "chụp" bằng html2canvas rồi đưa vào PDF bằng jsPDF (tránh lỗi vỡ font/dấu).
+   CHỐNG CẮT CÂU HỎI: mỗi .question-block được cắt riêng khỏi ảnh chụp và xếp lần lượt
+   vào trang; nếu không đủ chỗ trống trong trang hiện tại thì cả khối (đề + A/B/C/D)
+   được đẩy sang trang mới. Không còn cắt theo toạ độ cố định nữa.
+   (File này dùng html2canvas + jsPDF chứ không phải html2pdf.js nên tuỳ chọn
+   pagebreak:{avoid:'.question-block'} không áp dụng được — logic xếp trang bên dưới
+   làm đúng việc đó.) */
 function buildPdfReportDom(){
+  const FONT = "'Minion Pro','Minion 3',MinionPro,Georgia,'Times New Roman',Times,serif";
   const cats = Object.keys(lastResults.catTotals).sort((a,b) =>
     (lastResults.catWrong[b]||0)/lastResults.catTotals[b] - (lastResults.catWrong[a]||0)/lastResults.catTotals[a]);
   const dateStr = lastResults.submissionDate.toLocaleDateString('vi-VN') + ' ' +
@@ -2478,44 +2636,71 @@ function buildPdfReportDom(){
     return `<div class="catRow"><span>${escHtml(cat)}</span><span class="catBarBg"><span class="catBarFg" style="width:${pct}%;"></span></span><span class="catCount">${wrong} / ${total} wrong</span></div>`;
   }).join('');
 
-  // Chỉ liệt kê ĐỀ BÀI để học sinh làm lại — không hiện đáp án đã chọn, không
-  // hiện đáp án đúng, giống hệt yêu cầu "in ra làm lại".
+  // Chỉ liệt kê ĐỀ BÀI để học sinh làm lại — không hiện đáp án đã chọn / đáp án đúng.
+  const sectionHeading = `
+    <h3 class="pdf-h2" style="margin:0 0 4px;">Questions to Review Again</h3>
+    <div class="pdf-sub" style="margin-bottom:16px;">The following questions are recommended for additional practice.</div>`;
+  let globalIdx = 0;
   const detailHtml = cats.map(cat => {
     const qs = QUESTIONS
       .map((q,i) => ({ q, i }))
       .filter(o => (o.q.domain || 'General') === cat && answers[o.q.id] !== o.q.correctKey);
-    if(!qs.length) return '';
-    const catHead = `<div style="font-weight:800;color:#c0392b;font-size:14px;margin:0 0 10px;">${escHtml(cat)}</div>`;
-    const qHtml = qs.map(({q,i}, idx) => `
-      <div class="question-block" style="margin-bottom:22px;${idx===0 ? 'margin-top:18px;' : ''}">
-        ${idx===0 ? catHead : ''}
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#141414;">Câu ${i+1}</div>
-        ${q.passage ? `<div class="passage-text" style="font-size:12.5px;line-height:1.6;margin-bottom:10px;padding:10px 14px;background:#fbfcfe;border:1px solid #d8dbe0;border-radius:6px;">${richHtml(q.passage)}</div>` : ''}
-        <div class="question-text" style="font-size:13.5px;margin-bottom:8px;">${richHtml(q.questionText)}</div>
+    return qs.map(({q,i}, idx) => {
+      const isFirstOverall = (globalIdx++ === 0);
+      return `
+      <div class="question-block">
+        ${isFirstOverall ? sectionHeading : ''}
+        ${idx===0 ? `<div class="pdf-cat">${escHtml(cat)}</div>` : ''}
+        <div class="pdf-qnum">Question ${i+1}</div>
+        ${q.passage ? `<div class="passage-text pdf-passage">${richHtml(q.passage)}</div>` : ''}
+        <div class="question-text pdf-stem">${richHtml(q.questionText)}</div>
         <div class="options">
-          ${q.options.map((opt,oi) => `<div class="optWrap"><div class="opt" style="cursor:default;"><span class="optletter">${LETTERS[oi]}</span><span class="optext">${richHtml(opt)}</span></div></div>`).join('')}
+          ${q.options.map((opt,oi) => `<div class="optWrap"><div class="opt"><span class="optletter">${LETTERS[oi]}</span><span class="optext">${richHtml(opt)}</span></div></div>`).join('')}
         </div>
-      </div>`).join('');
-    return qHtml;
+      </div>`;
+    }).join('');
   }).join('');
 
   const root = document.createElement('div');
   root.id = 'pdfReportRoot';
-  root.style.cssText = "position:fixed;left:-9999px;top:0;width:760px;background:#fff;padding:36px 42px;font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;";
+  root.style.cssText = `position:fixed;left:-9999px;top:0;width:760px;background:#fff;padding:36px 42px;font-family:${FONT};color:#141414;`;
   root.innerHTML = `
-    <div class="hdr-brand" style="font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;">G.EDU</div>
-    <div style="font-weight:800;font-size:22px;letter-spacing:-.3px;margin:4px 0 18px;color:#141414;">Báo cáo ôn tập</div>
-    <div style="font-size:13px;line-height:1.9;margin-bottom:24px;color:#333;">
-      <div><b>Học sinh:</b> ${escHtml(studentName||'-')} &nbsp;&nbsp; <b>Lớp:</b> ${escHtml(studentClass||'-')}</div>
-      <div><b>Đề:</b> ${escHtml(TEST_NAME)} &nbsp;&nbsp; <b>Ngày làm bài:</b> ${dateStr}</div>
-      <div><b>Kết quả:</b> ${lastResults.correctCount} / ${lastResults.totalCount} câu đúng</div>
+    <style>
+      #pdfReportRoot, #pdfReportRoot *{box-sizing:border-box;}
+      #pdfReportRoot .hdr-brand{font-family:${FONT};font-size:11px;letter-spacing:1.2px;}
+      #pdfReportRoot .pdf-h1{font-size:24px;font-weight:800;letter-spacing:-.2px;margin:4px 0 16px;color:#141414;}
+      #pdfReportRoot .pdf-meta{font-size:13px;line-height:1.95;margin-bottom:24px;color:#222;}
+      #pdfReportRoot .pdf-h2{font-size:19px;font-weight:800;color:#141414;letter-spacing:-.1px;}
+      #pdfReportRoot .pdf-sub{font-size:12.5px;color:#5b6472;}
+      #pdfReportRoot .catRow{font-family:${FONT};font-size:13px;}
+      #pdfReportRoot .catRow .catBarBg{height:9px;background:transparent;}
+      #pdfReportRoot .catRow .catBarFg{height:9px;}
+      #pdfReportRoot .catRow .catCount{font-weight:700;}
+      #pdfReportRoot .question-block{margin:0 0 22px;page-break-inside:avoid !important;break-inside:avoid !important;}
+      #pdfReportRoot .pdf-cat{font-weight:800;color:#c0392b;font-size:14.5px;margin:0 0 10px;}
+      #pdfReportRoot .pdf-qnum{font-weight:800;font-size:13.5px;margin:0 0 8px;color:#141414;}
+      /* Đoạn văn, câu hỏi và các option dùng CHUNG 1 cỡ chữ */
+      #pdfReportRoot .pdf-passage, #pdfReportRoot .pdf-stem, #pdfReportRoot .opt, #pdfReportRoot .optext{
+        font-family:${FONT};font-size:13.5px;line-height:1.6;letter-spacing:0;word-spacing:0;}
+      #pdfReportRoot .pdf-passage{margin-bottom:12px;padding:11px 15px;background:#fbfcfe;border:1px solid #d8dbe0;border-radius:6px;font-weight:400;}
+      #pdfReportRoot .pdf-stem{font-weight:700;margin-bottom:10px;color:#141414;}
+      #pdfReportRoot .options{gap:9px;}
+      #pdfReportRoot .opt{cursor:default;padding:10px 14px;font-weight:400;transition:none;}
+      #pdfReportRoot .optext{line-height:1.5;}
+    </style>
+    <div id="pdfHead">
+      <div class="hdr-brand">G.EDU</div>
+      <div class="pdf-h1">Review Report</div>
+      <div class="pdf-meta">
+        <div><b>Student:</b> ${escHtml(studentName||'-')} &nbsp;&nbsp; <b>Class:</b> ${escHtml(studentClass||'-')}</div>
+        <div><b>Test:</b> ${escHtml(TEST_NAME)} &nbsp;&nbsp; <b>Date:</b> ${dateStr}</div>
+        <div><b>Score:</b> ${lastResults.correctCount} / ${lastResults.totalCount} correct</div>
+      </div>
+      <h3 class="pdf-h2" style="margin:0 0 4px;">Areas to Practice</h3>
+      <div class="pdf-sub" style="margin-bottom:12px;">Based on which types of questions you missed.</div>
+      ${barsHtml}
     </div>
-    <h3 style="margin:0 0 4px;color:#141414;font-weight:700;letter-spacing:-.2px;">Areas to Practice</h3>
-    <div style="font-size:12.5px;color:#5b6472;margin-bottom:14px;">Based on which types of questions you missed.</div>
-    ${barsHtml}
-    <h3 style="margin:28px 0 4px;color:#141414;font-weight:700;letter-spacing:-.2px;">Bài cần luyện tập lại</h3>
-    <div style="font-size:12.5px;color:#5b6472;margin-bottom:14px;">Các câu dưới đây gợi ý học sinh nên ôn luyện thêm.</div>
-    ${detailHtml}
+    <div id="pdfBody" style="margin-top:30px;">${detailHtml}</div>
   `;
   document.body.appendChild(root);
   return root;
@@ -2530,65 +2715,81 @@ async function downloadReviewPDF(){
   const root = buildPdfReportDom();
   try {
     if(document.fonts && document.fonts.ready){ await document.fonts.ready; }
-    const canvas = await html2canvas(root, { scale: 2, backgroundColor: '#ffffff' });
+    const canvas = await html2canvas(root, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
 
-    /* Cắt trang THEO KHỐI: tìm vị trí (px trên canvas) của từng .question-block,
-       nếu điểm cắt rơi vào giữa 1 khối thì lùi điểm cắt lên đầu khối đó để cả
-       câu hỏi (đề + A/B/C/D) được đẩy sang trang sau, không bị cắt ngang. */
     const rootRect = root.getBoundingClientRect();
-    const scale = canvas.width / rootRect.width;
-    const PAD = 4;                                   // chừa vài px để không mất viền trên/dưới
-    const blocks = Array.from(root.querySelectorAll('.question-block')).map(el => {
+    const scale = canvas.width / rootRect.width;    // px canvas / px CSS
+    const pxPerPt = canvas.width / pageW;           // px canvas / pt PDF
+    const PAD = Math.round(6 * scale);              // chừa viền trên/dưới để không mất border của option A
+
+    // Các "mục" không được phép cắt: phần đầu báo cáo + từng .question-block
+    const els = [root.querySelector('#pdfHead'), ...root.querySelectorAll('.question-block')];
+    const items = els.map(el => {
       const r = el.getBoundingClientRect();
-      return { top: Math.floor((r.top - rootRect.top) * scale) - PAD,
-               bottom: Math.ceil((r.bottom - rootRect.top) * scale) + PAD };
+      return {
+        top: Math.max(0, Math.floor((r.top - rootRect.top) * scale) - PAD),
+        bottom: Math.min(canvas.height, Math.ceil((r.bottom - rootRect.top) * scale) + PAD)
+      };
     });
+    items[0].top = Math.max(0, items[0].top);
 
-    const marginPt = 28;                             // lề trên/dưới mỗi trang
-    const pxPerPt = canvas.width / pageW;
-    const pageHpx = Math.floor((pageH - 2 * marginPt) * pxPerPt);
+    const mTop = 40, mBottom = 40, GAP = 14;
+    const limit = pageH - mBottom;                  // toạ độ y (pt) tối đa của nội dung
+    let cursor = mTop, firstDraw = true;
 
-    let y = 0, firstPage = true;
-    while(y < canvas.height){
-      let end = Math.min(y + pageHpx, canvas.height);
-      if(end < canvas.height){
-        for(const b of blocks){
-          // khối bị cắt ngang & vừa 1 trang -> lùi điểm cắt lên đầu khối
-          if(b.top > y && b.top < end && b.bottom > end && (b.bottom - b.top) <= pageHpx){
-            end = b.top;
-            break;
-          }
-        }
-      }
-      const sliceH = end - y;
+    const drawSlice = (srcY, srcH, dstY) => {
       const pc = document.createElement('canvas');
-      pc.width = canvas.width; pc.height = sliceH;
+      pc.width = canvas.width; pc.height = srcH;
       const ctx = pc.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, pc.width, sliceH);
-      ctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      if(!firstPage) pdf.addPage();
-      firstPage = false;
-      pdf.addImage(pc.toDataURL('image/png'), 'PNG', 0, marginPt, pageW, sliceH / pxPerPt);
-      y = end;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, pc.width, srcH);
+      ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+      pdf.addImage(pc.toDataURL('image/png'), 'PNG', 0, dstY, pageW, srcH / pxPerPt);
+    };
+    const newPage = () => { pdf.addPage(); cursor = mTop; };
+
+    for(const it of items){
+      const hPt = (it.bottom - it.top) / pxPerPt;
+      if(!firstDraw && cursor > mTop && cursor + hPt > limit) newPage();   // không đủ chỗ -> cả khối sang trang mới
+      firstDraw = false;
+
+      if(hPt <= limit - mTop){
+        drawSlice(it.top, it.bottom - it.top, cursor);
+        cursor += hPt + GAP;
+      } else {
+        // khối dài hơn cả 1 trang (hiếm) -> buộc phải chia nhỏ
+        let y = it.top;
+        while(y < it.bottom){
+          const availPx = Math.floor((limit - cursor) * pxPerPt);
+          const sliceH = Math.min(availPx, it.bottom - y);
+          drawSlice(y, sliceH, cursor);
+          y += sliceH;
+          cursor += sliceH / pxPerPt;
+          if(y < it.bottom) newPage();
+        }
+        cursor += GAP;
+      }
     }
 
-    const safeName = (studentName || 'HocSinh').replace(/[^\p{L}\p{N}]+/gu, '_');
+    const safeName = (studentName || 'Student').replace(/[^\p{L}\p{N}]+/gu, '_');
     const safeTest = TEST_NAME.replace(/[^\p{L}\p{N}]+/gu, '_');
-    pdf.save(`BaoCaoOnTap_${safeName}_${safeTest}.pdf`);
+    pdf.save(`ReviewReport_${safeName}_${safeTest}.pdf`);
   } finally {
     root.remove();
   }
 }
 
 function submitTest(auto){
+  qtPause();
   if(!auto){
-    const unanswered = QUESTIONS.length - Object.keys(answers).length;
-    if(unanswered > 0 && !confirm(unanswered + " question(s) unanswered. Submit anyway?")) return;
+    const _sm = curMod(); let unanswered = 0;
+    for(let i = _sm.from; i <= _sm.to; i++) if(answers[QUESTIONS[i].id] === undefined) unanswered++;
+    if(unanswered > 0 && !confirm(unanswered + " question(s) unanswered. Submit anyway?")){ qtResume(); return; }
   }
+  if(qtLiveTimer){ clearInterval(qtLiveTimer); qtLiveTimer = null; }
   if(timerInterval) clearInterval(timerInterval);
   // Đã nộp -> ngừng lưu tiến độ (server tự xoá bản nháp khi nhận bài)
   testInProgress = false; progressLocked = true; clearTimeout(saveTimer);
@@ -2600,7 +2801,8 @@ function submitTest(auto){
     section: TEST_SECTION,
     name: studentName,
     cls: studentClass,
-    answers: JSON.stringify(answersPayload)
+    answers: JSON.stringify(answersPayload),
+    qtimes: QUESTIONS.map(q => Math.round(qtMs(q.id) / 1000)).join(',')   // giây/câu, theo thứ tự câu
   });
   /* Also send each question's chosen answer as its own key (q1, q2, q3, ...)
      so the Apps Script can log every question into its own sheet column,
@@ -2640,6 +2842,7 @@ function submitTest(auto){
 
   document.getElementById('wrongListCard').style.display = QUESTIONS.length > 0 ? 'block' : 'none';
   buildReviewTable();
+  renderTimeSummary();
 
   const cats = Object.keys(catTotals).sort((a,b) => (catWrong[b]||0)/catTotals[b] - (catWrong[a]||0)/catTotals[a]);
   document.getElementById('categoryBreakdown').innerHTML = cats.map(cat => {
